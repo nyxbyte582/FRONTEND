@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Sender Automation</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            border-radius: 10px;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+        }
+        .result, .successList, .failedProxies {
+            margin-top: 20px;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .successList {
+            background: #d4edda;
+        }
+        .failedProxies {
+            background: #f8d7da;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        #statusBar {
+            margin-top: 20px;
+            height: 20px;
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            position: relative;
+        }
+        #progress {
+            height: 100%;
+            width: 0;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+        @media (max-width: 576px) {
+            .container {
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OTP Sender Automation</h1>
+        <div class="form-group">
+            <label for="countryCode">Country Code:</label>
+            <input type="text" class="form-control" id="countryCode" placeholder="+1" required>
+        </div>
+        <div class="form-group">
+            <label for="proxy">Proxies (one per line, username:password@host:port or protocol://host:port):</label>
+            <textarea class="form-control" id="proxy" rows="5" placeholder="username:password@host:port or socks4://host:port"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="numbers">Enter Mobile Numbers (one number per line, max 200 numbers):</label>
+            <textarea class="form-control" id="numbers" rows="10" placeholder="Enter mobile numbers, one per line..."></textarea>
+        </div>
+        <button class="btn btn-custom btn-block" id="startButton">Start Sending OTPs</button>
+
+        <div id="statusBar">
+            <div id="progress" style="background-color: red;"></div>
+        </div>
+        <div class="result" id="resultArea"></div>
+        <div class="error-message" id="errorArea"></div>
+
+        <h5>Successfully Sent OTPs:</h5>
+        <div class="successList" id="successListArea"></div>
+
+        <h5>Failed Proxies:</h5>
+        <div class="failedProxies" id="failedProxiesArea"></div>
+    </div>
+    <script>
+        document.getElementById('startButton').addEventListener('click', async function() {
+            const countryCode = document.getElementById('countryCode').value.trim();
+            const proxyText = document.getElementById('proxy').value.trim();
+            const numbersText = document.getElementById('numbers').value.trim();
+
+            const proxies = proxyText.split('\n').map(line => line.trim()).filter(line => line);
+            const numbers = numbersText.split('\n').map(line => line.trim()).filter(line => line);
+
+            try {
+                const response = await fetch('http://localhost:3000/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ countryCode, proxies, numbers })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error occurred');
+                }
+
+                const result = await response.json();
+                document.getElementById('resultArea').innerHTML = JSON.stringify(result.data, null, 2);
+                document.getElementById('successListArea').innerHTML = result.data.filter(item => item.success).map(item => `Number: ${item.number}`).join('<br>');
+                document.getElementById('failedProxiesArea').innerHTML = result.failedProxies.join('<br>');
+                document.getElementById('errorArea').innerHTML = result.message;
+
+            } catch (error) {
+                document.getElementById('errorArea').innerHTML = `<p>${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
